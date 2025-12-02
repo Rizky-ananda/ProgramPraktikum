@@ -1,76 +1,144 @@
 import paho.mqtt.client as mqtt
 import tkinter as tk
 from threading import Thread
+import time
 
-# Variabel global untuk menyimpan data sensor
-suhu_data = []
-rh_data = []
+# -----------------------------
+#   DAFTAR 15 SENSOR
+# -----------------------------
+expected_sensors = [f"DHT/{i:02d}" for i in range(1, 16)]  # DHT/01 - DHT/15
 
-# Fungsi untuk menghitung rata-rata
-def hitung_rata_rata(data):
-    return sum(data) / len(data) if data else 0
+# Data penyimpanan
+data_sensors = {
+    sensor: {"suhu": [], "rh": [], "last_update": 0}
+    for sensor in expected_sensors
+}
 
-# Callback ketika terhubung ke broker
+MAX_DATA = 10
+TIMEOUT = 5   # detik tanpa data → tidak terbaca
+
+
+# -------- MQTT CALLBACK --------
 def on_connect(client, userdata, flags, rc):
-    print("Terhubung ke broker MQTT dengan kode hasil:", rc)
-    client.subscribe("DHT/#")  # Berlangganan ke semua topik DHT/yyy
+    print("Terhubung ke broker:", rc)
+    client.subscribe("DHT/#")
 
-# Callback ketika menerima pesan dari broker
+
 def on_message(client, userdata, msg):
+    topic = msg.topic
     payload = msg.payload.decode("utf-8")
-    print(f"Pesan diterima di {msg.topic}: {payload}") 
-    # print(payload.split(", ")[1].split(":")[1])
 
-    # Parsing data suhu dan RH
-    if "Suhu" in payload and "RH" in payload:
-        try:
-            suhu_val = float(payload.split(", ")[0].split(":")[1])
-            rh_val = float(payload.split(", ")[1].split(":")[1])
-            if(suhu_val <= 20 or suhu_val == 'nan' or rh_val == 'nan'):
-                print("Format pesan tidak sesuai.")
-                return
-            suhu_data.append(suhu_val)
-            rh_data.append(rh_val)
+    if topic not in expected_sensors:
+        return
 
-            # Batasi jumlah data yang disimpan
-            if len(suhu_data) > 10:
-                suhu_data.pop(0)
-            if len(rh_data) > 10:
-                rh_data.pop(0)
+    try:
+        bagian = payload.split(", ")
+        suhu = float(bagian[0].split(":")[1])
+        rh = float(bagian[1].split(":")[1])
 
-            update_ui()
-        except ValueError:
-            print("Format pesan tidak sesuai.")
+        if suhu <= 0 or suhu > 100:
+            return
 
-# Fungsi untuk memperbarui UI dengan data rata-rata
-def update_ui():
-    rata_suhu = hitung_rata_rata(suhu_data)
-    rata_rh = hitung_rata_rata(rh_data)
-    label_suhu.config(text=f"Rata-rata Suhu: {rata_suhu:.2f} °C")
-    label_rh.config(text=f"Rata-rata RH: {rata_rh:.2f} %")
+        d = data_sensors[topic]
+        d["suhu"].append(suhu)
+        d["rh"].append(rh)
+        d["last_update"] = time.time()
 
-# Fungsi untuk menjalankan client MQTT
+        if len(d["suhu"]) > MAX_DATA:
+            d["suhu"].pop(0)
+        if len(d["rh"]) > MAX_DATA:
+            d["rh"].pop(0)
+
+    except:
+        print("Format payload tidak sesuai.")
+
+
+# -------- FUNGSI PEMBANTU --------
+def hitung_rata(data):
+    return sum(data) / len(data) if data else None
+
+
+def update_terminal_output():
+    line = ""
+
+    for sensor in expected_sensors:
+        d = data_sensors[sensor]
+
+        if time.time() - d["last_update"] > TIMEOUT:
+            line += f"{sensor}: - | "
+        else:
+            suhu_avg = hitung_rata(d["suhu"])
+            rh_avg = hitung_rata(d["rh"])
+            line += f"{sensor}: Suhu {suhu_avg:.1f}°C, RH {rh_avg:.1f}% | "
+
+    print(line)
+
+
+# -------- UPDATE UI TKINTER --------
+def update_ui_labels():
+    for sensor in expected_sensors:
+        d = data_sensors[sensor]
+        elapsed = time.time() - d["last_update"]
+
+        if elapsed > TIMEOUT:
+            label_suhu[sensor].config(text="Suhu : Tidak terbaca")
+            label_rh[sensor].config(text="RH   : Tidak terbaca")
+        else:
+            suhu_avg = hitung_rata(d["suhu"])
+            rh_avg = hitung_rata(d["rh"])
+            label_suhu[sensor].config(text=f"Suhu : {suhu_avg:.1f} °C")
+            label_rh[sensor].config(text=f"RH   : {rh_avg:.1f} %")
+
+
+def loop_checker():
+    update_ui_labels()
+    update_terminal_output()
+    root.after(1000, loop_checker)
+
+
+# -------- MQTT THREAD --------
 def mqtt_loop():
     client = mqtt.Client()
     client.on_connect = on_connect
     client.on_message = on_message
-    client.connect("192.168.1.211", 1883, 60)
+    client.connect("192.168.2.211", 1883, 60)
     client.loop_forever()
 
-# Setup UI menggunakan tkinter
+
+# -------- TKINTER UI --------
 root = tk.Tk()
-root.title("Pemantauan Suhu dan RH")
+root.title("Monitoring 15 Sensor DHT")
 
-label_suhu = tk.Label(root, text="Rata-rata Suhu: - °C", font=("Helvetica", 16))
-label_suhu.pack(pady=10)
+frame_main = tk.Frame(root)
+frame_main.pack(padx=20, pady=20)
 
-label_rh = tk.Label(root, text="Rata-rata RH: - %", font=("Helvetica", 16))
-label_rh.pack(pady=10)
+label_suhu = {}
+label_rh = {}
 
-# Jalankan MQTT client di thread terpisah
+# -----------------------------
+#  GRID 5 kolom × 3 baris
+# -----------------------------
+for index, sensor in enumerate(expected_sensors):
+
+    row = index // 5   # 0–2
+    col = index % 5    # 0–4
+
+    frame = tk.Frame(frame_main, padx=20, pady=10)
+    frame.grid(row=row, column=col)
+
+    tk.Label(frame, text=sensor, font=("Helvetica", 16, "bold")).pack()
+
+    label_suhu[sensor] = tk.Label(frame, text="Suhu : -", font=("Helvetica", 12))
+    label_suhu[sensor].pack(anchor="w")
+
+    label_rh[sensor] = tk.Label(frame, text="RH   : -", font=("Helvetica", 12))
+    label_rh[sensor].pack(anchor="w")
+
+# Jalankan MQTT
 thread = Thread(target=mqtt_loop)
 thread.daemon = True
 thread.start()
 
-# Jalankan aplikasi UI
+# Mulai loop UI
+root.after(1000, loop_checker)
 root.mainloop()

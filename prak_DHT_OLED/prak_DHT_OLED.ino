@@ -10,7 +10,7 @@
 
 // definisikan variabel yang diguanakan 
 // DHT
-#define DHTPIN 4
+#define DHTPIN 32
 #define DHTTYPE DHT22
 
 // OLED (ukuran screen)
@@ -68,12 +68,15 @@ void loop() {
   display.println("kelompok 2");
 
   // display.clearDisplay();
-  // display.setTextSize(1);
-  // display.setTextColor(WHITE);
-  // display.setCursor(0,2);
-  // display.print("Suhu");
-  // display.print(suhu);
-  // display.println("RH:" + String (rh));
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0,20);
+  display.print("Suhu: " + String(suhu) + " C");
+  // display.print("RH: " + String(rh));
+
+  display.setCursor(0,30);
+  // display.print("Suhu: " + String(suhu) + " ");
+  display.print("RH:   " + String(rh) + " %");
   display.display();
 
 

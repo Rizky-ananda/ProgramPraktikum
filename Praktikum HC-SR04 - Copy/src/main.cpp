@@ -1,4 +1,3 @@
-
 #include <Arduino.h>
 
 /* Praktikum Pengukuran jarak menggunakan sensor HC-SR04
@@ -32,20 +31,12 @@
 // Inisialisasi oled
 Adafruit_SSD1306 display(SCREEN_WIDTH,SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-// multitasking
-unsigned long waktuSblm1;
-unsigned long waktuSblm2;
-unsigned long waktuSkrg1;
-unsigned long waktuSkrg2;
-const int jeda_monitor = 200;
-const int jeda_oled = 1000;
-
 void setup() {
 
   Serial.begin(9600);
   // Setup pin Trig dan Echo
   pinMode (PIN_TRIG, OUTPUT);
-  pinMode (PIN_ECHO, INPUT);
+  pinMode (PIN_TRIG, INPUT);
 
   // Cek Oled
   if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRES)){
@@ -61,11 +52,8 @@ void setup() {
 
 void loop() {
   // Start a new measurement:
-  waktuSkrg1 = millis();
-  waktuSkrg2 = millis();
+
   // on/off sinyal Trig
-  digitalWrite(PIN_TRIG, LOW);
-  delayMicroseconds(2);
   // menyalakan sinyal trig
   digitalWrite(PIN_TRIG, HIGH);
   // delay sinyal (10 ms)
@@ -77,39 +65,25 @@ void loop() {
   // deklarasikan echo dengan fungsi pulseIn
   int duration = pulseIn(PIN_ECHO, HIGH);
   float jarak = (duration * 345.65 / 10000) / 2;
-  float jarakkalibrasi = 1.0237 * jarak;
   
   // cetak hasil pembacaan
-  if (waktuSkrg1 - waktuSblm1 >= jeda_monitor){
-    Serial.print("Jarak: ");
-    Serial.print(jarak);
-    Serial.print(" cm");
-    Serial.print("\t");
-    Serial.print("Jarak kalibrasi: ");
-    Serial.print(jarakkalibrasi);
-    Serial.println(" cm");
-    waktuSblm1 = waktuSkrg1;
-  }
+  Serial.print("Jarak: ");
+  Serial.print(jarak);
+  Serial.println(" cm");
   // Serial.print(" Distance in inches: ");
   // Serial.println(duration / 148);
 
   // cetak hasil pembacaan di oled
-  if (waktuSkrg2 - waktuSblm2 >= jeda_oled){
-    display.clearDisplay();
-    display.setCursor(30,0);
-    display.print("Pengukuran Jarak");
-    display.setCursor(15,10);
-    display.print("Ikrima & Wilham");
-    display.setCursor(0,30);
-    display.print("Jarak :" + String(jarak) + " Cm");
-    display.setCursor(0,40);
-    display.print("Jarak 2:" + String(jarakkalibrasi) + " Cm");
-    display.display();
-    waktuSblm2 = waktuSkrg2;
-    }
+  display.clearDisplay();
+  display.setCursor(30,0);
+  display.print("Pengukuran Jarak");
+  display.setCursor(15,10);
+  display.print("Kelompok 2: Rizky");
+  display.setCursor(0,30);
+  display.print("Jarak " + String(jarak) + " Cm");
 
   // display.setCursor(0,40);
   // display.print("Dalam Inci   = " + String(duration / 148) + " In");
-  // delay(1000);
+  delay(1000);
   
 }

@@ -2,7 +2,7 @@
    MATERI PENGUKURAN CAHAYA RUANGAN MENGGUNAKAN LDR */
 
 // definisikan variabel
-byte pinSensor = 4;
+byte pinSensor = ;
 float tegangan;
 float lux;
 

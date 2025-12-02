@@ -1,54 +1,72 @@
-//  master code
-#include <SoftwareSerial.h>
+// #include <Arduino.h>
 
-#define RX_PIN 16 // MAX485 RX pin
-#define TX_PIN 17 // MAX485 TX pin
-#define DRE_PIN 4 // MAX485 DE pin
-#define pinPot 15
-// #define RE_PIN 5 // MAX485 RE pin
+//Masukan Library Yang Digunakan
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
 
+Adafruit_BME280 bme;
 
-SoftwareSerial mySerial(RX_PIN, TX_PIN); // RX, TX
-// String inputString = "";
-// bool stringComplate = false;
+// put function declarations here:
 
 void setup() {
+  // put your setup code here, to run once:
   Serial.begin(9600);
-  mySerial.begin(9600);
-  pinMode(DRE_PIN, OUTPUT);
-  pinMode(DRE_PIN, OUTPUT);
-  digitalWrite(DRE_PIN, HIGH);
-  digitalWrite(DRE_PIN, LOW);
-  // inputString.reserve(200);
+  // bool status;
+  // status = bme.begin(0x76);
+  // if(!status){
+  //   Serial.println("gagal membaca sensor");
+  //   while(1);
+  // }
 }
 
 void loop() {
-  // Master code
+  // put your main code here, to run repeatedly:
 
-  int bacaanPotensio = analogRead(15);
-  String input = Serial.readString();
+  float suhu = bme.readTemperature();
+  float kelembaban = bme.readHumidity();
 
-  digitalWrite(DRE_PIN, HIGH);
-  Serial.println(bacaanPotensio);
-  mySerial.print("com3: "+ input + String(bacaanPotensio));
-  digitalWrite(DRE_PIN, LOW); 
-
-  
-
-  // ilmu ngobrol
-  // if (Serial.available()){
-  //   int bacaanPotensio = analogRead(13);
-  //   String input = Serial.readString();
-  //   digitalWrite(DRE_PIN, HIGH);
-  //   Serial.println(input);
-  //   mySerial.print("COM 15: "+ input + String(bacaanPotensio));
-  //   digitalWrite(DRE_PIN, LOW); 
-  // }
-
-  // slave code
-  if (mySerial.available()) {
-    String message = mySerial.readString();
-    Serial.println(message);
+  bool status;
+  status = bme.begin(0x76);
+  if(!status){
+    Serial.println("gagal membaca sensor");
+    while(1);
   }
-  delay(1000);
+
+  Serial.print("Suhu: " + String(suhu) + " C");
+  Serial.print("\t");
+  Serial.println("Kelembaban: " + String(kelembaban) + " %");
+
+  delay(400);
+
 }
+
+// #include <Wire.h>
+
+// void setup() {
+//   Wire.begin();
+//   Serial.begin(9600);
+//   Serial.println("Scanning I2C devices...");
+// }
+
+// void loop() {
+//   byte error, address;
+//   int nDevices = 0;
+
+//   for (address = 1; address < 127; address++) {
+//     Wire.beginTransmission(address);
+//     error = Wire.endTransmission();
+
+//     if (error == 0) {
+//       Serial.print("Device ditemukan di alamat 0x");
+//       if (address < 16) Serial.print("0");
+//       Serial.print(address, HEX);
+//       Serial.println();
+//       nDevices++;
+//     }
+//   }
+//   if (nDevices == 0) Serial.println("Tidak ada perangkat I2C ditemukan\n");
+//   else Serial.println("Selesai scan\n");
+
+//   delay(500);
+// }
